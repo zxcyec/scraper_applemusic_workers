@@ -1,0 +1,8 @@
+name = "am"
+main = "src/index.ts"
+compatibility_date = "2023-11-25"
+usage_model = "standard"
+env = { }
+
+[triggers]
+crons = [ ]
