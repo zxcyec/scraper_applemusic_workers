@@ -1,41 +1,71 @@
-const ORIGIN_URL = 'https://example.com';
-const EXPERIMENTS = [
-  { name: 'big-button', threshold: 0.5 }, // enable the Big Button experiment for 50% of users
-  { name: 'new-brand', threshold: 0.1 }, // enable the New Brand experiment for 10% of users
-  { name: 'new-layout', threshold: 0.02 }, // enable the New Layout experiment for 2% of users
-];
+import index from "./index.html";
+import {resolveAM} from "./lib/apple_music";
+import { Buffer } from 'buffer';
+import { QueryModel } from "./lib/model";
 
 export default {
-  async fetch(request, env, ctx) {
-    const fingerprint = [request.headers.get('cf-connecting-ip'), request.cf?.postalCode]; // add any values you want considered as a fingerprint
-    const activeExperiments = await getActiveExperiments(fingerprint, EXPERIMENTS);
-
-    // add a data-experiments attribute to the <body> tag
-    // which can be styled in CSS with a wildcard selector like [data-experiments*="big-button"]
-    const rewriter = new HTMLRewriter().on('body', {
-      element(element) {
-        element.setAttribute('data-experiments', activeExperiments.join(' '));
-      },
-    });
-
-    const res = await fetch(ORIGIN_URL, request);
-
-    return rewriter.transform(res);
+  async fetch(request: Request, env: any, ctx: any) {
+    return await handle(request);
   },
 };
 
-// Get active experiments by hashing a fingerprint
-async function getActiveExperiments(fingerprint, experiments) {
-  const fingerprintHash = await hash('SHA-1', JSON.stringify(fingerprint));
-  const MAX_UINT8 = 255;
-  const activeExperiments = experiments.filter((exp, i) => fingerprintHash[i] <= exp.threshold * MAX_UINT8);
-  return activeExperiments.map((exp) => exp.name);
+async function handle(request: Request) : Promise<Response> {
+  let response: Response;
+  try {
+    let url = new URL(request.url);
+    if (url.pathname === '/') {
+      console.log(url.pathname === '/' || url.search === '');
+      response = await makeHTMLResponse(index);
+    } else {
+      if (request.method === 'POST' 
+          && request.body !== null 
+          && request.body !== undefined 
+          && url.pathname === '/api/search') {
+      }
+      const body = (await request.json()) as QueryModel;
+      const resp = await getAm(body.url);
+      const data = await resolveAM(resp, body.url);
+      response = await makeJSONResponse(data);
+    }
+  } catch (e) {
+    console.log(e);
+    response = await makeJSONResponse({
+      'status': 100
+    }); 
+  }
+  return response;
 }
 
-// Hash a string using the Web Crypto API
-async function hash(algorithm, message) {
-  const msgUint8 = new TextEncoder().encode(message); // encode as (utf-8) Uint8Array
-  const hashBuffer = await crypto.subtle.digest(algorithm, msgUint8); // hash the message
-  const hashArray = new Uint8Array(hashBuffer); // convert buffer to byte array
-  return hashArray;
+async function readBody(requestBody: ReadableStream<any>) : Promise<string> {
+  const chunks = [];
+  for await (const chunk of requestBody) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString();
 }
+
+async function makeHTMLResponse(body: string) : Promise<Response> {
+  return new Response(body, {
+    headers: {
+      'content-type': 'text-html'
+    }
+  })
+}
+
+async function makeJSONResponse(body: object) : Promise<Response> {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      'content-type': 'application/json'
+    }
+  })
+}
+
+async function getAm(url: string) : Promise<string> {
+  let data = await fetch(url)
+  let json = await data.text()
+  console.log(url);
+  return json;
+}
+
+
+
