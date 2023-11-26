@@ -1,5 +1,5 @@
 import index from "./index.html";
-import {resolveAM} from "./lib/apple_music";
+import {getAm, resolveAM} from "./lib/apple_music";
 import { Buffer } from 'buffer';
 import { QueryModel } from "./lib/model";
 
@@ -14,7 +14,7 @@ async function handle(request: Request) : Promise<Response> {
   try {
     let url = new URL(request.url);
     if (url.pathname === '/') {
-      console.log(url.pathname === '/' || url.search === '');
+      console.log(url.pathname === '/');
       response = await makeHTMLResponse(index);
     } else {
       if (request.method === 'POST' 
@@ -47,7 +47,7 @@ async function readBody(requestBody: ReadableStream<any>) : Promise<string> {
 async function makeHTMLResponse(body: string) : Promise<Response> {
   return new Response(body, {
     headers: {
-      'content-type': 'text-html'
+      'content-type': 'text-html; charset: utf-8'
     }
   })
 }
@@ -55,17 +55,12 @@ async function makeHTMLResponse(body: string) : Promise<Response> {
 async function makeJSONResponse(body: object) : Promise<Response> {
   return new Response(JSON.stringify(body), {
     headers: {
-      'content-type': 'application/json'
+      'content-type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
     }
   })
 }
 
-async function getAm(url: string) : Promise<string> {
-  let data = await fetch(url)
-  let json = await data.text()
-  console.log(url);
-  return json;
-}
 
 
 

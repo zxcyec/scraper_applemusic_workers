@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import { ScrapeResult, ScrapeResultData } from "./model";
 
-export function resolveAM(body: string, url: string) : ScrapeResult {
+export async function resolveAM(body: string, url: string) : Promise<ScrapeResult> {
     const $ = cheerio.load(body);
     let info_json = JSON.parse($('script[id="schema:music-album"]').text().trim());
     let descr = $('p[data-testid="truncate-text"]').text().trim();
@@ -23,6 +23,14 @@ export function resolveAM(body: string, url: string) : ScrapeResult {
     return scrape;
 }
 
+export async function getAm(url: string) : Promise<string> {
+    console.log(url);
+    console.log(url.replace(/\?i=\d+?/, ""))
+    let data = await fetch(url.replace(/\?i=\d+?$/, ""))
+    let json = await data.text()
+    return json;
+  }
+  
 // 只保留数组的指定元素
 function makeNewArr(arr: [], save_name: string = 'name'): string[] {
     let data : string[] = [];
